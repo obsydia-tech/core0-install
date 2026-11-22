@@ -1,0 +1,30 @@
+#!/usr/sbin/nft -f
+# obsydia-agent firewall: mesh
+
+flush ruleset
+
+table inet filter {
+  chain input {
+    type filter hook input priority 0; policy drop;
+    ct state established,related accept
+    iif lo accept
+    tcp dport 9101 ip saddr != { 10.60.0.10 } drop
+    iifname "wg0" ip saddr { 10.60.0.21, 10.60.0.22 } tcp dport { 22, 7777 } accept
+    tcp dport { 22, 7777 } drop
+    iifname "wg0" ip saddr 10.60.0.0/24 icmp type echo-request accept
+    iifname "wg0" ip saddr { 10.60.0.2, 10.60.0.4, 10.60.0.6, 10.60.0.8 } tcp dport 7401 accept
+    iifname "wg0" ip saddr { 10.60.0.2, 10.60.0.4, 10.60.0.6, 10.60.0.8, 10.60.0.10, 10.60.0.12 } tcp dport 7402 accept
+    iifname "wg0" ip saddr { 10.60.0.10 } tcp dport 9101 accept
+    iifname "wg0" limit rate 20/second log prefix "obsydia-wg0-drop " level info
+    iifname "wg0" drop
+    udp dport 51820 accept
+  }
+
+  chain forward {
+    type filter hook forward priority 0; policy drop;
+  }
+
+  chain output {
+    type filter hook output priority 0; policy accept;
+  }
+}
